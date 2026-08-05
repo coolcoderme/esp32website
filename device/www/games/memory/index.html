@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Match</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  #grid { display:grid; grid-template-columns:repeat(4,68px); gap:8px; }
+  .mc { width:68px; height:68px; border-radius:10px; background:#26365c; border:none; cursor:pointer;
+        font-size:30px; display:grid; place-items:center; color:transparent; }
+  .mc.up { background:#182036; color:#e6ecff; }
+  .mc.done { background:#1f3b30; color:#34d399; cursor:default; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME="memory";
+document.getElementById("app").innerHTML = gameHeader("Memory Match") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Moves: <b id="moves">0</b> &nbsp; Pairs: <b id="pairs">0</b>/8</div>
+      <div id="grid"></div>
+      <div class="muted">Match all pairs. Fewer moves = higher score (score = 1000 &minus; moves&times;10).</div>
+      <button class="btn" id="start">New Game</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const EMOJI=["\uD83C\uDF4E","\uD83D\uDE80","\uD83C\uDFB8","\uD83D\uDC31","\u26BD","\uD83C\uDF55","\uD83C\uDF88","\uD83D\uDC19"];
+const gridEl=document.getElementById("grid");
+let deck, first, lock, moves, pairs;
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function reset(){
+  deck=shuffle([...EMOJI,...EMOJI]); first=null; lock=false; moves=0; pairs=0;
+  document.getElementById("moves").textContent=0; document.getElementById("pairs").textContent=0;
+  gridEl.innerHTML="";
+  deck.forEach((sym,i)=>{
+    const b=document.createElement("button"); b.className="mc"; b.dataset.i=i; b.textContent=sym;
+    b.onclick=()=>flip(b,i); gridEl.appendChild(b);
+  });
+}
+function flip(b,i){
+  if(lock||b.classList.contains("up")||b.classList.contains("done")) return;
+  b.classList.add("up");
+  if(first===null){ first=b; return; }
+  moves++; document.getElementById("moves").textContent=moves;
+  if(deck[+first.dataset.i]===deck[i]){
+    first.classList.add("done"); b.classList.add("done"); first=null;
+    pairs++; document.getElementById("pairs").textContent=pairs;
+    if(pairs===8) win();
+  } else {
+    lock=true; const a=first; first=null;
+    setTimeout(()=>{ a.classList.remove("up"); b.classList.remove("up"); lock=false; }, 700);
+  }
+}
+async function win(){
+  const score=Math.max(50, 1000-moves*10);
+  await LB.recordAndRefresh(GAME, score, document.getElementById("lb"));
+}
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

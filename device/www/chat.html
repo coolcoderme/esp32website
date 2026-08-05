@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Chat</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  #log { max-height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+  .msg { background:#0f1730; border:1px solid var(--border); border-radius:12px; padding:10px 12px; }
+  .msg .who { color:var(--accent2); font-weight:700; font-size:13px; }
+  .msg .when { color:var(--muted); font-size:11px; float:right; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site"><div class="brand"><div class="logo">E32</div>
+    <div><h1>Open Chat</h1><p><a class="back" href="/">&larr; Back home</a></p></div></div></header>
+  <div class="card" style="max-width:640px;margin:0 auto">
+    <div id="log"><p class="muted">Loading messages...</p></div>
+    <div class="gap"></div>
+    <div class="row">
+      <input id="name" placeholder="Your name" style="max-width:160px">
+      <input id="text" placeholder="Type a message..." style="flex:1">
+      <button class="btn" id="send">Send</button>
+    </div>
+    <p class="muted" id="note" style="margin-top:8px">Messages are public. Anything with flagged language is held for the admin to review before it appears.</p>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+async function load(){
+  const msgs=await (await fetch("/api/chat")).json();
+  $("log").innerHTML = msgs.length ? msgs.map(m=>
+    `<div class="msg"><span class="when">${new Date(m.ts*1000).toLocaleTimeString()}</span>
+     <div class="who">${esc(m.name)}</div><div>${esc(m.text)}</div></div>`).join("")
+    : '<p class="muted">No messages yet. Say hi!</p>';
+  $("log").scrollTop=$("log").scrollHeight;
+}
+function esc(s){ return (s+"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+async function send(){
+  const name=$("name").value.trim()||"anon", text=$("text").value.trim();
+  if(!text) return;
+  const r=await (await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name,text})})).json();
+  $("text").value="";
+  $("note").textContent = r.held
+    ? "Your message contained flagged words and is awaiting admin approval."
+    : "Sent!";
+  load();
+}
+$("send").onclick=send;
+$("text").addEventListener("keydown",e=>{ if(e.key==="Enter") send(); });
+load(); setInterval(load,5000);
+</script>
+</body>
+</html>

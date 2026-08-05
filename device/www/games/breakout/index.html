@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breakout</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME = "breakout";
+document.getElementById("app").innerHTML = gameHeader("Breakout") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Score: <b id="score">0</b> &nbsp; Lives: <b id="lives">3</b></div>
+      <canvas id="c" width="420" height="360"></canvas>
+      <div class="muted">Move the mouse or drag &middot; arrow keys work too</div>
+      <button class="btn" id="start">Start / Restart</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const cv=document.getElementById("c"), ctx=cv.getContext("2d");
+const PW=70, PH=10, BR=6;
+let paddleX, ball, bricks, score, lives, alive, loop;
+
+function makeBricks(){
+  const rows=5, cols=9, bw=cv.width/cols, bh=20, arr=[];
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++)
+    arr.push({x:c*bw, y:40+r*bh, w:bw-4, h:bh-4, hit:false, color:["#22d3ee","#5b8cff","#34d399","#fbbf24","#f87171"][r]});
+  return arr;
+}
+function reset(){
+  paddleX=(cv.width-PW)/2; score=0; lives=3; alive=true; bricks=makeBricks();
+  launch(); upd();
+  if(loop) cancelAnimationFrame(loop); loop=requestAnimationFrame(tick);
+}
+function launch(){ ball={x:cv.width/2, y:cv.height-30, vx:3*(Math.random()<.5?1:-1), vy:-3.2}; }
+function upd(){ document.getElementById("score").textContent=score; document.getElementById("lives").textContent=lives; }
+function tick(){
+  if(!alive) return;
+  ball.x+=ball.vx; ball.y+=ball.vy;
+  if(ball.x<BR||ball.x>cv.width-BR) ball.vx*=-1;
+  if(ball.y<BR) ball.vy*=-1;
+  if(ball.y>cv.height-20 && ball.x>paddleX && ball.x<paddleX+PW && ball.vy>0){
+    ball.vy*=-1; ball.vx += ((ball.x-(paddleX+PW/2))/PW)*3;
+  }
+  if(ball.y>cv.height){
+    lives--; upd();
+    if(lives<=0) return gameOver();
+    launch();
+  }
+  bricks.forEach(b=>{
+    if(b.hit) return;
+    if(ball.x>b.x&&ball.x<b.x+b.w&&ball.y>b.y&&ball.y<b.y+b.h){
+      b.hit=true; ball.vy*=-1; score+=10; upd();
+    }
+  });
+  if(bricks.every(b=>b.hit)){ score+=100; bricks=makeBricks(); launch(); }
+  draw(); loop=requestAnimationFrame(tick);
+}
+function draw(){
+  ctx.fillStyle="#060a14"; ctx.fillRect(0,0,cv.width,cv.height);
+  bricks.forEach(b=>{ if(!b.hit){ ctx.fillStyle=b.color; ctx.fillRect(b.x,b.y,b.w,b.h); } });
+  ctx.fillStyle="#e6ecff"; ctx.fillRect(paddleX, cv.height-14, PW, PH);
+  ctx.beginPath(); ctx.arc(ball.x, ball.y, BR, 0, 7); ctx.fillStyle="#22d3ee"; ctx.fill();
+}
+async function gameOver(){
+  alive=false;
+  ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#fff"; ctx.font="24px system-ui"; ctx.textAlign="center";
+  ctx.fillText("Game Over", cv.width/2, cv.height/2);
+  if(score>0) await LB.recordAndRefresh(GAME, score, document.getElementById("lb"));
+}
+function movePaddle(x){ paddleX=Math.max(0,Math.min(cv.width-PW, x-PW/2)); }
+cv.addEventListener("mousemove", e=>{ const r=cv.getBoundingClientRect(); movePaddle((e.clientX-r.left)*(cv.width/r.width)); });
+cv.addEventListener("touchmove", e=>{ const r=cv.getBoundingClientRect(); movePaddle((e.touches[0].clientX-r.left)*(cv.width/r.width)); e.preventDefault(); }, {passive:false});
+document.addEventListener("keydown", e=>{
+  if(e.key==="ArrowLeft") movePaddle(paddleX+PW/2-24);
+  if(e.key==="ArrowRight") movePaddle(paddleX+PW/2+24);
+});
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

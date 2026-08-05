@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pong</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME="pong";
+document.getElementById("app").innerHTML = gameHeader("Pong") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">You: <b id="you">0</b> &nbsp; CPU: <b id="cpu">0</b> &nbsp; Rallies: <b id="rally">0</b></div>
+      <canvas id="c" width="420" height="300"></canvas>
+      <div class="muted">Move mouse / drag &middot; first to 7 wins. Score = rallies survived.</div>
+      <button class="btn" id="start">Start / Restart</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const cv=document.getElementById("c"), ctx=cv.getContext("2d");
+const PH=56, PW=8;
+let py, ay, ball, you, cpu, rally, best, alive, loop;
+
+function reset(){
+  py=(cv.height-PH)/2; ay=py; you=0; cpu=0; rally=0; best=0; alive=true; serve();
+  if(loop) cancelAnimationFrame(loop); loop=requestAnimationFrame(tick);
+}
+function serve(dir){ ball={x:cv.width/2,y:cv.height/2,vx:(dir||(Math.random()<.5?1:-1))*3.4,vy:(Math.random()*3-1.5)}; }
+function upd(){ document.getElementById("you").textContent=you;
+  document.getElementById("cpu").textContent=cpu; document.getElementById("rally").textContent=best; }
+function tick(){
+  if(!alive) return;
+  ball.x+=ball.vx; ball.y+=ball.vy;
+  if(ball.y<6||ball.y>cv.height-6) ball.vy*=-1;
+  // player paddle (left)
+  if(ball.x<18 && ball.y>py && ball.y<py+PH && ball.vx<0){ ball.vx*=-1.05; ball.vy += ((ball.y-(py+PH/2))/PH)*4; rally++; best=Math.max(best,rally); }
+  // cpu paddle (right)
+  if(ball.x>cv.width-18 && ball.y>ay && ball.y<ay+PH && ball.vx>0){ ball.vx*=-1.05; ball.vy += ((ball.y-(ay+PH/2))/PH)*4; }
+  ay += Math.sign((ball.y-PH/2)-ay)*3.0; // simple AI
+  ay=Math.max(0,Math.min(cv.height-PH,ay));
+  if(ball.x<0){ cpu++; rally=0; upd(); if(cpu>=7) return end(); serve(1); }
+  if(ball.x>cv.width){ you++; rally=0; upd(); if(you>=7) return end(); serve(-1); }
+  draw(); loop=requestAnimationFrame(tick);
+}
+function draw(){
+  ctx.fillStyle="#060a14"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.strokeStyle="#2a3557"; ctx.setLineDash([6,8]); ctx.beginPath();
+  ctx.moveTo(cv.width/2,0); ctx.lineTo(cv.width/2,cv.height); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle="#22d3ee"; ctx.fillRect(10,py,PW,PH);
+  ctx.fillStyle="#f87171"; ctx.fillRect(cv.width-18,ay,PW,PH);
+  ctx.fillStyle="#e6ecff"; ctx.beginPath(); ctx.arc(ball.x,ball.y,6,0,7); ctx.fill();
+}
+async function end(){
+  alive=false;
+  ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#fff"; ctx.font="22px system-ui"; ctx.textAlign="center";
+  ctx.fillText(you>cpu?"You Win!":"CPU Wins", cv.width/2, cv.height/2);
+  if(best>0) await LB.recordAndRefresh(GAME, best, document.getElementById("lb"));
+}
+function movePaddle(y){ py=Math.max(0,Math.min(cv.height-PH, y-PH/2)); }
+cv.addEventListener("mousemove", e=>{ const r=cv.getBoundingClientRect(); movePaddle((e.clientY-r.top)*(cv.height/r.height)); });
+cv.addEventListener("touchmove", e=>{ const r=cv.getBoundingClientRect(); movePaddle((e.touches[0].clientY-r.top)*(cv.height/r.height)); e.preventDefault(); }, {passive:false});
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

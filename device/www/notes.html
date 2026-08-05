@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Note to the Microcontroller</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site"><div class="brand"><div class="logo">E32</div>
+    <div><h1>Leave a Note</h1><p><a class="back" href="/">&larr; Back home</a></p></div></div></header>
+  <div class="card" style="max-width:560px;margin:0 auto">
+    <p class="sub">Write a private note to the microcontroller's owner. Notes are not shown publicly &mdash; only the admin can read them in the moderation panel.</p>
+    <label>Your name (optional)</label>
+    <input id="name" placeholder="anon">
+    <label>Note</label>
+    <textarea id="text" rows="5" placeholder="Type your note..."></textarea>
+    <div class="gap"></div>
+    <button class="btn" id="send">Send note</button>
+    <p class="muted" id="status" style="margin-top:10px"></p>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+$("send").onclick=async()=>{
+  const name=$("name").value.trim()||"anon", text=$("text").value.trim();
+  if(!text){ $("status").textContent="Please write something first."; return; }
+  const r=await (await fetch("/api/notes",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name,text})})).json();
+  if(r.ok){ $("text").value=""; $("status").textContent="Thanks! Your note was delivered."; }
+  else $("status").textContent="Error: "+(r.error||"could not send");
+};
+</script>
+</body>
+</html>

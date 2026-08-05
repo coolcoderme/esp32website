@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simon</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  #pad { display:grid; grid-template-columns:repeat(2,110px); gap:10px; }
+  .btn-s { width:110px; height:110px; border-radius:16px; border:none; cursor:pointer; opacity:.55;
+           transition:opacity .1s; }
+  .btn-s.lit { opacity:1; }
+  #g { background:#34d399; } #r { background:#f87171; }
+  #y { background:#fbbf24; } #b { background:#5b8cff; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME="simon";
+document.getElementById("app").innerHTML = gameHeader("Simon") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Level: <b id="level">0</b> &nbsp; <span id="msg">Press Start</span></div>
+      <div id="pad">
+        <button class="btn-s" id="g" data-k="0"></button>
+        <button class="btn-s" id="r" data-k="1"></button>
+        <button class="btn-s" id="y" data-k="2"></button>
+        <button class="btn-s" id="b" data-k="3"></button>
+      </div>
+      <div class="muted">Repeat the growing sequence. Score = level reached.</div>
+      <button class="btn" id="start">Start</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const ids=["g","r","y","b"];
+const freq=[329,262,220,392];
+let seq, step, playing, actx;
+function tone(k){
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.frequency.value=freq[k]; o.connect(g); g.connect(actx.destination);
+    g.gain.value=.2; o.start(); o.stop(actx.currentTime+.3);
+  }catch(e){}
+}
+function light(k){ const el=document.getElementById(ids[k]); el.classList.add("lit"); tone(k);
+  setTimeout(()=>el.classList.remove("lit"),300); }
+function reset(){ seq=[]; next(); }
+async function next(){
+  step=0; seq.push(Math.random()*4|0);
+  document.getElementById("level").textContent=seq.length;
+  document.getElementById("msg").textContent="Watch...";
+  playing=false;
+  for(let i=0;i<seq.length;i++){ await wait(600); light(seq[i]); }
+  await wait(400); document.getElementById("msg").textContent="Your turn"; playing=true;
+}
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function press(k){
+  if(!playing) return;
+  light(k);
+  if(k!==seq[step]){ playing=false; document.getElementById("msg").textContent="Wrong! Game over.";
+    if(seq.length-1>0) await LB.recordAndRefresh(GAME, seq.length-1, document.getElementById("lb")); return; }
+  step++;
+  if(step===seq.length){ playing=false; await wait(600); next(); }
+}
+document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>press(+b.dataset.k));
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+</script>
+</body>
+</html>

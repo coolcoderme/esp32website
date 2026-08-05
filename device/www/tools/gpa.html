@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPA Calculator</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site"><div class="brand"><div class="logo">E32</div>
+    <div><h1>GPA Calculator</h1><p><a class="back" href="/#tools">&larr; Back to tools</a></p></div></div></header>
+  <div class="card" style="max-width:640px;margin:0 auto">
+    <p class="sub">Enter your courses. Weighted adds +0.5 for Honors and +1.0 for AP/IB to the grade point.</p>
+    <table id="courses"><thead><tr><th>Course</th><th>Grade</th><th>Credits</th><th>Level</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="gap"></div>
+    <button class="btn secondary small" id="add">+ Add course</button>
+    <div class="gap"></div>
+    <div class="grid cols-2">
+      <div class="card"><h3>Unweighted GPA</h3><div class="stat-value" id="uw">0.00</div></div>
+      <div class="card"><h3>Weighted GPA</h3><div class="stat-value" id="w">0.00</div></div>
+    </div>
+  </div>
+</div>
+<script>
+const GP={A:4,"A-":3.7,"B+":3.3,B:3,"B-":2.7,"C+":2.3,C:2,"C-":1.7,"D+":1.3,D:1,F:0};
+const tbody=document.querySelector("#courses tbody");
+function row(){
+  const tr=document.createElement("tr");
+  const grades=Object.keys(GP).map(g=>`<option>${g}</option>`).join("");
+  tr.innerHTML=`
+    <td><input placeholder="Course name"></td>
+    <td><select>${grades}</select></td>
+    <td><input type="number" value="1" min="0" step="0.5" style="width:70px"></td>
+    <td><select><option value="0">Regular</option><option value="0.5">Honors</option><option value="1">AP/IB</option></select></td>
+    <td><button class="btn danger small">&times;</button></td>`;
+  tr.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",calc));
+  tr.querySelector("button").onclick=()=>{ tr.remove(); calc(); };
+  tbody.appendChild(tr); calc();
+}
+function calc(){
+  let uwPts=0, wPts=0, cr=0;
+  tbody.querySelectorAll("tr").forEach(tr=>{
+    const [ , gSel, crIn, lvSel]=tr.querySelectorAll("input,select,select");
+    const grade=tr.querySelectorAll("select")[0].value;
+    const level=parseFloat(tr.querySelectorAll("select")[1].value);
+    const credits=parseFloat(tr.querySelector('input[type=number]').value)||0;
+    const base=GP[grade];
+    uwPts += base*credits;
+    wPts  += (base + (base>0?level:0))*credits;
+    cr += credits;
+  });
+  document.getElementById("uw").textContent = cr? (uwPts/cr).toFixed(2):"0.00";
+  document.getElementById("w").textContent  = cr? (wPts/cr).toFixed(2):"0.00";
+}
+document.getElementById("add").onclick=row;
+row(); row(); row();
+</script>
+</body>
+</html>

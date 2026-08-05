@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tetris</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME = "tetris";
+document.getElementById("app").innerHTML = gameHeader("Tetris") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Score: <b id="score">0</b> &nbsp; Lines: <b id="lines">0</b></div>
+      <canvas id="c" width="240" height="440"></canvas>
+      <div class="muted">&#9664; &#9654; move &middot; &#9650; rotate &middot; &#9660; drop</div>
+      <div class="row center">
+        <button class="btn secondary small" data-a="left">&#9664;</button>
+        <button class="btn secondary small" data-a="rotate">&#8635;</button>
+        <button class="btn secondary small" data-a="right">&#9654;</button>
+        <button class="btn secondary small" data-a="drop">&#9660;</button>
+      </div>
+      <button class="btn" id="start">Start / Restart</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+const COLS = 10, ROWS = 20, S = cv.width / COLS;
+const COLORS = ["#060a14","#22d3ee","#5b8cff","#fbbf24","#34d399","#f87171","#c084fc","#f472b6"];
+const SHAPES = [
+  [], [[1,1,1,1]], [[2,0,0],[2,2,2]], [[0,0,3],[3,3,3]],
+  [[4,4],[4,4]], [[0,5,5],[5,5,0]], [[0,6,0],[6,6,6]], [[7,7,0],[0,7,7]]
+];
+let grid, piece, px, py, score, lines, loop, alive;
+
+function newGrid(){ return Array.from({length:ROWS},()=>Array(COLS).fill(0)); }
+function spawn(){
+  const t = 1 + (Math.random()*7|0);
+  piece = SHAPES[t].map(r => r.slice());
+  px = (COLS>>1) - (piece[0].length>>1); py = 0;
+  if (collide(px,py,piece)) gameOver();
+}
+function collide(ox,oy,p){
+  for (let y=0;y<p.length;y++) for (let x=0;x<p[y].length;x++){
+    if (!p[y][x]) continue;
+    const nx=ox+x, ny=oy+y;
+    if (nx<0||nx>=COLS||ny>=ROWS||(ny>=0&&grid[ny][nx])) return true;
+  }
+  return false;
+}
+function merge(){
+  piece.forEach((r,y)=>r.forEach((v,x)=>{ if(v&&py+y>=0) grid[py+y][px+x]=v; }));
+}
+function rotate(){
+  const r = piece[0].map((_,i)=>piece.map(row=>row[i]).reverse());
+  if (!collide(px,py,r)) piece=r;
+}
+function clearLines(){
+  let cleared=0;
+  for (let y=ROWS-1;y>=0;y--){
+    if (grid[y].every(v=>v)){ grid.splice(y,1); grid.unshift(Array(COLS).fill(0)); cleared++; y++; }
+  }
+  if (cleared){ lines+=cleared; score += [0,40,100,300,1200][cleared]; upd(); }
+}
+function drop(){
+  if (!collide(px,py+1,piece)) { py++; }
+  else { merge(); clearLines(); spawn(); }
+  draw();
+}
+function move(dx){ if(!collide(px+dx,py,piece)) px+=dx; draw(); }
+function hardDrop(){ while(!collide(px,py+1,piece)) py++; drop(); }
+function upd(){ document.getElementById("score").textContent=score; document.getElementById("lines").textContent=lines; }
+function draw(){
+  ctx.fillStyle="#060a14"; ctx.fillRect(0,0,cv.width,cv.height);
+  for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++) if (grid[y][x]) cell(x,y,grid[y][x]);
+  piece.forEach((r,y)=>r.forEach((v,x)=>{ if(v) cell(px+x,py+y,v); }));
+}
+function cell(x,y,v){ ctx.fillStyle=COLORS[v]; ctx.fillRect(x*S+1,y*S+1,S-2,S-2); }
+function reset(){
+  grid=newGrid(); score=0; lines=0; alive=true; upd(); spawn(); draw();
+  if (loop) clearInterval(loop); loop=setInterval(()=>{ if(alive) drop(); }, 550);
+}
+async function gameOver(){
+  alive=false; clearInterval(loop);
+  ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#fff"; ctx.font="22px system-ui"; ctx.textAlign="center";
+  ctx.fillText("Game Over", cv.width/2, cv.height/2);
+  if (score>0) await LB.recordAndRefresh(GAME, score, document.getElementById("lb"));
+}
+document.addEventListener("keydown", e=>{
+  if(!alive) return;
+  if(e.key==="ArrowLeft") move(-1);
+  else if(e.key==="ArrowRight") move(1);
+  else if(e.key==="ArrowUp"){ rotate(); draw(); }
+  else if(e.key==="ArrowDown") drop();
+  else if(e.key===" "){ e.preventDefault(); hardDrop(); }
+});
+document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
+  if(!alive) return;
+  ({left:()=>move(-1),right:()=>move(1),rotate:()=>{rotate();draw();},drop:()=>hardDrop()})[b.dataset.a]();
+});
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

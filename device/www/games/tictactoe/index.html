@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tic-Tac-Toe</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  #board { display:grid; grid-template-columns:repeat(3,84px); gap:8px; }
+  .sq { width:84px; height:84px; border-radius:12px; background:#182036; border:1px solid var(--border);
+        font-size:44px; font-weight:800; cursor:pointer; color:#e6ecff; display:grid; place-items:center; }
+  .sq.x { color:#22d3ee; } .sq.o { color:#f87171; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME="tictactoe";
+document.getElementById("app").innerHTML = gameHeader("Tic-Tac-Toe") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Win streak: <b id="streak">0</b> &nbsp; <span id="msg">Your move (X)</span></div>
+      <div id="board"></div>
+      <div class="muted">You are X vs a very strong AI. Score = your best win streak.</div>
+      <button class="btn" id="start">New Round</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const WINS=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const boardEl=document.getElementById("board");
+let cell, done, streak=0, best=0;
+
+function reset(){
+  cell=Array(9).fill(""); done=false; document.getElementById("msg").textContent="Your move (X)";
+  boardEl.innerHTML="";
+  cell.forEach((_,i)=>{ const b=document.createElement("button"); b.className="sq"; b.onclick=()=>play(i); boardEl.appendChild(b); });
+  render();
+}
+function render(){
+  [...boardEl.children].forEach((b,i)=>{ b.textContent=cell[i]; b.className="sq "+cell[i].toLowerCase(); });
+}
+function winner(c){
+  for(const [a,b,d] of WINS) if(c[a]&&c[a]===c[b]&&c[b]===c[d]) return c[a];
+  return c.every(v=>v)?"draw":null;
+}
+function minimax(c,player){
+  const w=winner(c);
+  if(w==="O") return {s:10}; if(w==="X") return {s:-10}; if(w==="draw") return {s:0};
+  const moves=[];
+  c.forEach((v,i)=>{ if(!v){ const nc=c.slice(); nc[i]=player;
+    moves.push({i, s:minimax(nc, player==="O"?"X":"O").s}); } });
+  return player==="O" ? moves.reduce((a,b)=>b.s>a.s?b:a) : moves.reduce((a,b)=>b.s<a.s?b:a);
+}
+function aiMove(){
+  // 88% optimal, 12% random slip so it is beatable
+  const empties=cell.map((v,i)=>v?null:i).filter(v=>v!==null);
+  let i;
+  if(Math.random()<0.12) i=empties[Math.random()*empties.length|0];
+  else i=minimax(cell,"O").i;
+  cell[i]="O"; render();
+}
+function play(i){
+  if(done||cell[i]) return;
+  cell[i]="X"; render();
+  let w=winner(cell);
+  if(w) return finish(w);
+  aiMove();
+  w=winner(cell);
+  if(w) return finish(w);
+}
+async function finish(w){
+  done=true;
+  if(w==="X"){ streak++; best=Math.max(best,streak); document.getElementById("msg").textContent="You win! Play again."; }
+  else if(w==="O"){ document.getElementById("msg").textContent="AI wins."; endStreak(); streak=0; }
+  else { document.getElementById("msg").textContent="Draw."; }
+  document.getElementById("streak").textContent=streak;
+}
+async function endStreak(){
+  if(best>0){ await LB.recordAndRefresh(GAME, best, document.getElementById("lb")); best=0; }
+}
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

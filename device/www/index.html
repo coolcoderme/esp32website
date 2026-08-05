@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 Mega-Site</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="site">
+    <div class="brand">
+      <div class="logo">E32</div>
+      <div>
+        <h1>ESP32 Mega-Site</h1>
+        <p>Hosted from a Freenove ESP32-WROVER on MicroPython</p>
+      </div>
+    </div>
+    <nav class="topnav">
+      <a href="#games">Games</a>
+      <a href="#tools">Tools</a>
+      <a href="/chat.html">Chat</a>
+      <a href="/notes.html">Notes</a>
+      <a href="/map.html">Visitor Map</a>
+      <a href="/admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <!-- Live system dashboard -->
+  <h2 class="section">Live System Dashboard</h2>
+  <div class="grid cols-3">
+    <div class="card">
+      <h3>RAM</h3>
+      <p class="sub">Heap in use right now</p>
+      <div class="stat-value"><span id="ram-used">--</span> <span class="stat-unit">KB used</span></div>
+      <div class="gap"></div>
+      <div class="bar" id="ram-bar"><span></span></div>
+      <div class="meta"><span id="ram-pct">--%</span><span id="ram-total">-- KB total</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Flash (ROM)</h3>
+      <p class="sub">Internal program storage</p>
+      <div class="stat-value"><span id="flash-used">--</span> <span class="stat-unit">used</span></div>
+      <div class="gap"></div>
+      <div class="bar" id="flash-bar"><span></span></div>
+      <div class="meta"><span id="flash-pct">--%</span><span id="flash-total">-- total</span></div>
+    </div>
+
+    <div class="card">
+      <h3>SD Card (1 GB)</h3>
+      <p class="sub">Website + data storage</p>
+      <div class="stat-value"><span id="sd-used">--</span> <span class="stat-unit">used</span></div>
+      <div class="gap"></div>
+      <div class="bar" id="sd-bar"><span></span></div>
+      <div class="meta"><span id="sd-pct">--%</span><span id="sd-total">-- total</span></div>
+    </div>
+  </div>
+
+  <div class="gap"></div>
+  <div class="grid cols-3">
+    <div class="card">
+      <h3>Indoor Climate (DHT11)</h3>
+      <p class="sub">Live from the on-board sensor</p>
+      <div class="row" style="gap:28px">
+        <div><div class="stat-value" id="temp">--</div><div class="muted">Temperature</div></div>
+        <div><div class="stat-value" id="hum">--</div><div class="muted">Humidity</div></div>
+      </div>
+      <div class="muted mono" id="sensor-note" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h3>Outdoor Weather (NWS)</h3>
+      <p class="sub" id="weather-loc">Loading forecast...</p>
+      <div id="weather-body" class="muted">--</div>
+    </div>
+
+    <div class="card">
+      <h3>Air Quality (Open-Meteo)</h3>
+      <p class="sub">US AQI + pollutants</p>
+      <div class="stat-value"><span id="aqi">--</span> <span class="stat-unit" id="aqi-label"></span></div>
+      <div class="muted mono" id="aqi-detail" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- Games -->
+  <h2 class="section" id="games">Arcade &mdash; 10 Games with Leaderboards</h2>
+  <div class="grid cols-4">
+    <a class="card tile" href="/games/snake/index.html"><div class="emoji">&#128013;</div><div class="name">Snake</div><div class="desc">Eat, grow, don't crash</div></a>
+    <a class="card tile" href="/games/tetris/index.html"><div class="emoji">&#129513;</div><div class="name">Tetris</div><div class="desc">Stack the falling blocks</div></a>
+    <a class="card tile" href="/games/breakout/index.html"><div class="emoji">&#127934;</div><div class="name">Breakout</div><div class="desc">Smash every brick</div></a>
+    <a class="card tile" href="/games/2048/index.html"><div class="emoji">&#127922;</div><div class="name">2048</div><div class="desc">Merge to the big tile</div></a>
+    <a class="card tile" href="/games/pong/index.html"><div class="emoji">&#127955;</div><div class="name">Pong</div><div class="desc">Beat the AI paddle</div></a>
+    <a class="card tile" href="/games/minesweeper/index.html"><div class="emoji">&#128163;</div><div class="name">Minesweeper</div><div class="desc">Flag every mine</div></a>
+    <a class="card tile" href="/games/memory/index.html"><div class="emoji">&#129504;</div><div class="name">Memory Match</div><div class="desc">Find the pairs</div></a>
+    <a class="card tile" href="/games/tictactoe/index.html"><div class="emoji">&#11093;</div><div class="name">Tic-Tac-Toe</div><div class="desc">Versus unbeatable AI</div></a>
+    <a class="card tile" href="/games/invaders/index.html"><div class="emoji">&#128126;</div><div class="name">Space Invaders</div><div class="desc">Defend from aliens</div></a>
+    <a class="card tile" href="/games/simon/index.html"><div class="emoji">&#127925;</div><div class="name">Simon</div><div class="desc">Repeat the sequence</div></a>
+  </div>
+
+  <!-- Tools -->
+  <h2 class="section" id="tools">Offline Tools</h2>
+  <div class="grid cols-3">
+    <a class="card tile" href="/tools/calculator.html"><div class="emoji">&#128425;</div><div class="name">Calculator</div><div class="desc">Full scientific calculator</div></a>
+    <a class="card tile" href="/tools/gpa.html"><div class="emoji">&#127891;</div><div class="name">GPA Calculator</div><div class="desc">Weighted &amp; unweighted GPA</div></a>
+    <a class="card tile" href="/tools/pomodoro.html"><div class="emoji">&#127813;</div><div class="name">Pomodoro Timer</div><div class="desc">Focus / break study cycles</div></a>
+    <a class="card tile" href="/tools/converter.html"><div class="emoji">&#128207;</div><div class="name">Unit Converter</div><div class="desc">Length, mass, temp &amp; more</div></a>
+  </div>
+
+  <footer class="site">
+    ESP32-S3 Mega-Site &middot; CircuitPython &middot; <span id="clock" class="mono"></span>
+  </footer>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

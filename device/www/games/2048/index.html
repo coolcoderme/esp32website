@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2048</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  #board { display:grid; grid-template-columns:repeat(4,72px); gap:8px; background:#0c1226;
+           padding:8px; border-radius:12px; border:1px solid var(--border); }
+  .t { width:72px; height:72px; border-radius:8px; display:grid; place-items:center;
+       font-weight:800; font-size:24px; background:#182036; color:#e6ecff; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME="2048";
+document.getElementById("app").innerHTML = gameHeader("2048") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Score: <b id="score">0</b></div>
+      <div id="board"></div>
+      <div class="muted">Arrow keys / WASD &middot; or swipe</div>
+      <div class="row center">
+        <button class="btn secondary small" data-d="up">&#9650;</button>
+        <button class="btn secondary small" data-d="left">&#9664;</button>
+        <button class="btn secondary small" data-d="down">&#9660;</button>
+        <button class="btn secondary small" data-d="right">&#9654;</button>
+      </div>
+      <button class="btn" id="start">New Game</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const COLORS={2:"#1f294a",4:"#26365c",8:"#5b8cff",16:"#4f7ef0",32:"#22d3ee",64:"#1bb6d4",
+  128:"#34d399",256:"#2bb583",512:"#fbbf24",1024:"#f59e0b",2048:"#f87171"};
+let grid, score, over;
+const boardEl=document.getElementById("board");
+
+function reset(){ grid=Array(16).fill(0); score=0; over=false; add(); add(); draw(); }
+function add(){
+  const e=[]; grid.forEach((v,i)=>{ if(!v) e.push(i); });
+  if(e.length) grid[e[Math.random()*e.length|0]] = Math.random()<.9?2:4;
+}
+function draw(){
+  boardEl.innerHTML="";
+  grid.forEach(v=>{
+    const d=document.createElement("div"); d.className="t";
+    if(v){ d.textContent=v; d.style.background=COLORS[v]||"#f472b6"; d.style.color = v<=4?"#8b96b8":"#06121f"; }
+    else d.style.background="#0f1730";
+    boardEl.appendChild(d);
+  });
+  document.getElementById("score").textContent=score;
+}
+function slide(row){
+  let a=row.filter(v=>v); 
+  for(let i=0;i<a.length-1;i++){ if(a[i]===a[i+1]){ a[i]*=2; score+=a[i]; a.splice(i+1,1); } }
+  while(a.length<4) a.push(0);
+  return a;
+}
+function rows(){ return [0,1,2,3].map(r=>grid.slice(r*4,r*4+4)); }
+function setRows(rs){ grid=[].concat(...rs); }
+function transpose(rs){ return [0,1,2,3].map(i=>rs.map(r=>r[i])); }
+function move(dir){
+  if(over) return;
+  const before=grid.join(",");
+  let rs=rows();
+  if(dir==="left") rs=rs.map(slide);
+  if(dir==="right") rs=rs.map(r=>slide(r.reverse()).reverse());
+  if(dir==="up"){ rs=transpose(rs).map(slide); rs=transpose(rs); }
+  if(dir==="down"){ rs=transpose(rs).map(r=>slide(r.reverse()).reverse()); rs=transpose(rs); }
+  setRows(rs);
+  if(grid.join(",")!==before){ add(); draw(); if(isOver()) end(); }
+}
+function isOver(){
+  if(grid.includes(0)) return false;
+  const rs=rows();
+  for(const r of rs) for(let i=0;i<3;i++) if(r[i]===r[i+1]) return false;
+  const t=transpose(rs);
+  for(const r of t) for(let i=0;i<3;i++) if(r[i]===r[i+1]) return false;
+  return true;
+}
+async function end(){
+  over=true;
+  if(score>0) await LB.recordAndRefresh(GAME, score, document.getElementById("lb"));
+}
+document.addEventListener("keydown", e=>{
+  const k={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",
+           w:"up",s:"down",a:"left",d:"right"}[e.key];
+  if(k){ e.preventDefault(); move(k); }
+});
+document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>move(b.dataset.d));
+let sx,sy;
+boardEl.addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+boardEl.addEventListener("touchend",e=>{
+  const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<20) return;
+  move(Math.abs(dx)>Math.abs(dy) ? (dx>0?"right":"left") : (dy>0?"down":"up"));
+});
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

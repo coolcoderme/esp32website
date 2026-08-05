@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Space Invaders</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME="invaders";
+document.getElementById("app").innerHTML = gameHeader("Space Invaders") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Score: <b id="score">0</b> &nbsp; Lives: <b id="lives">3</b> &nbsp; Wave: <b id="wave">1</b></div>
+      <canvas id="c" width="420" height="380"></canvas>
+      <div class="muted">&#9664; &#9654; move &middot; Space / tap to shoot</div>
+      <div class="row center">
+        <button class="btn secondary small" data-a="left">&#9664;</button>
+        <button class="btn secondary small" data-a="fire">FIRE</button>
+        <button class="btn secondary small" data-a="right">&#9654;</button>
+      </div>
+      <button class="btn" id="start">Start / Restart</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const cv=document.getElementById("c"), ctx=cv.getContext("2d");
+let shipX, bullets, aliens, dir, score, lives, wave, alive, loop, left, right, cooldown, gameOver;
+
+function makeAliens(){
+  const a=[]; for(let r=0;r<4;r++) for(let c=0;c<8;c++) a.push({x:30+c*44, y:30+r*34, w:26, h:18, alive:true});
+  return a;
+}
+function reset(){
+  LB.resetSession(GAME);
+  shipX=cv.width/2; bullets=[]; aliens=makeAliens(); dir=1; score=0; lives=3; wave=1;
+  alive=true; gameOver=false; left=right=false; cooldown=0; upd();
+  if(loop) cancelAnimationFrame(loop); loop=requestAnimationFrame(tick);
+}
+function upd(){ document.getElementById("score").textContent=score;
+  document.getElementById("lives").textContent=lives; document.getElementById("wave").textContent=wave; }
+function fire(){ if(cooldown<=0){ bullets.push({x:shipX,y:cv.height-30,vy:-6}); cooldown=16; } }
+function tick(){
+  if(!alive) return;
+  if(left) shipX-=4; if(right) shipX+=4;
+  shipX=Math.max(16,Math.min(cv.width-16,shipX));
+  if(cooldown>0) cooldown--;
+  bullets.forEach(b=>b.y+=b.vy); bullets=bullets.filter(b=>b.y>-10);
+  // move aliens
+  let edge=false, step=0.5+wave*0.15;
+  aliens.forEach(a=>{ if(a.alive){ a.x+=dir*step; if(a.x<12||a.x>cv.width-12) edge=true; } });
+  if(edge){ dir*=-1; aliens.forEach(a=>a.y+=16); }
+  // collisions
+  let aliensReachedBottom = false;
+  aliens.forEach(a=>{
+    if(!a.alive) return;
+    bullets.forEach(b=>{ if(b.hit) return;
+      if(Math.abs(b.x-a.x)<a.w/2 && Math.abs(b.y-a.y)<a.h/2){ a.alive=false; b.hit=true; score+=10; upd(); }
+    });
+    if(a.y>cv.height-40) aliensReachedBottom = true;
+  });
+  if(aliensReachedBottom) loseLife();
+  bullets=bullets.filter(b=>!b.hit);
+  if(aliens.every(a=>!a.alive)){ wave++; aliens=makeAliens(); dir=1; upd(); }
+  draw(); loop=requestAnimationFrame(tick);
+}
+function loseLife(){
+  if(!alive || gameOver) return;
+  lives--; upd(); aliens=makeAliens(); dir=1; if(lives<=0) end();
+}
+function draw(){
+  ctx.fillStyle="#060a14"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#22d3ee"; ctx.beginPath(); ctx.moveTo(shipX,cv.height-28);
+  ctx.lineTo(shipX-14,cv.height-10); ctx.lineTo(shipX+14,cv.height-10); ctx.fill();
+  ctx.fillStyle="#fbbf24"; bullets.forEach(b=>ctx.fillRect(b.x-2,b.y,4,10));
+  ctx.fillStyle="#f87171"; aliens.forEach(a=>{ if(a.alive) ctx.fillRect(a.x-a.w/2,a.y-a.h/2,a.w,a.h); });
+}
+async function end(){
+  if(gameOver) return;
+  gameOver = true;
+  alive = false;
+  if(loop) cancelAnimationFrame(loop);
+  ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#fff"; ctx.font="24px system-ui"; ctx.textAlign="center";
+  ctx.fillText("Game Over", cv.width/2, cv.height/2);
+  if(score>0) await LB.recordAndRefresh(GAME, score, document.getElementById("lb"));
+}
+document.addEventListener("keydown", e=>{
+  if(e.key==="ArrowLeft") left=true; if(e.key==="ArrowRight") right=true;
+  if(e.key===" "){ e.preventDefault(); fire(); }
+});
+document.addEventListener("keyup", e=>{ if(e.key==="ArrowLeft") left=false; if(e.key==="ArrowRight") right=false; });
+document.querySelectorAll("[data-a]").forEach(b=>{
+  const a=b.dataset.a;
+  if(a==="fire") b.onclick=fire;
+  else { b.ontouchstart=b.onmousedown=()=>{ if(a==="left")left=true; else right=true; };
+         b.ontouchend=b.onmouseup=b.onmouseleave=()=>{ if(a==="left")left=false; else right=false; }; }
+});
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

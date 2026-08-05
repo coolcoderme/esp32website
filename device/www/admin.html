@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin &middot; Moderation</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .item { background:#0f1730; border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .item .who { color:var(--accent2); font-weight:700; }
+  .item .hits { color:var(--bad); font-size:12px; }
+  .item .when { color:var(--muted); font-size:11px; float:right; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site"><div class="brand"><div class="logo">E32</div>
+    <div><h1>Admin &middot; Moderation</h1><p><a class="back" href="/">&larr; Back home</a></p></div></div></header>
+
+  <div class="card" id="login" style="max-width:400px;margin:0 auto">
+    <h3>Sign in</h3>
+    <p class="sub">Enter the admin password from <span class="mono">config.py</span>.</p>
+    <input type="password" id="pw" placeholder="Admin password">
+    <div class="gap"></div>
+    <button class="btn" id="loginBtn">Sign in</button>
+    <p class="muted" id="loginMsg" style="margin-top:10px"></p>
+  </div>
+
+  <div id="panel" class="hidden">
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Flagged chat messages</h3>
+        <p class="sub">Held from the public chat until you approve them.</p>
+        <div id="chatQueue"></div>
+      </div>
+      <div class="card">
+        <h3>Private notes</h3>
+        <p class="sub">Notes left for you. Flagged notes are marked.</p>
+        <div id="notesQueue"></div>
+      </div>
+    </div>
+    <div class="gap"></div>
+    <button class="btn secondary" id="refresh">Refresh</button>
+    <button class="btn secondary" id="logout">Sign out</button>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let token=sessionStorage.getItem("adminToken")||"";
+function esc(s){ return (s+"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+async function login(){
+  const r=await (await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({password:$("pw").value})})).json();
+  if(r.ok){ token=r.token; sessionStorage.setItem("adminToken",token); showPanel(); }
+  else $("loginMsg").textContent="Wrong password.";
+}
+function showPanel(){ $("login").classList.add("hidden"); $("panel").classList.remove("hidden"); loadQueue(); }
+function logout(){ token=""; sessionStorage.removeItem("adminToken");
+  $("panel").classList.add("hidden"); $("login").classList.remove("hidden"); }
+
+async function loadQueue(){
+  const res=await fetch("/api/admin/queue",{headers:{"X-Admin-Token":token}});
+  if(res.status===401){ logout(); $("loginMsg").textContent="Session expired, sign in again."; return; }
+  const q=await res.json();
+  $("chatQueue").innerHTML = q.flagged_chat.length ? q.flagged_chat.map(m=>`
+    <div class="item"><span class="when">${new Date(m.ts*1000).toLocaleString()}</span>
+      <div class="who">${esc(m.name)}</div><div>${esc(m.text)}</div>
+      <div class="hits">flagged: ${esc((m.hits||[]).join(", "))}</div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn small" onclick="approve('${m.id}')">Approve</button>
+        <button class="btn danger small" onclick="del('${m.id}','chat')">Delete</button>
+      </div></div>`).join("") : '<p class="muted">Nothing to review.</p>';
+
+  $("notesQueue").innerHTML = q.notes.length ? q.notes.slice().reverse().map(m=>`
+    <div class="item"><span class="when">${new Date(m.ts*1000).toLocaleString()}</span>
+      <div class="who">${esc(m.name)} ${m.flagged?'<span class="hits">(flagged: '+esc((m.hits||[]).join(", "))+')</span>':''}</div>
+      <div>${esc(m.text)}</div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn danger small" onclick="del('${m.id}','note')">Delete</button>
+      </div></div>`).join("") : '<p class="muted">No notes yet.</p>';
+}
+async function approve(id){
+  await fetch("/api/admin/approve",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Token":token},
+    body:JSON.stringify({id})}); loadQueue();
+}
+async function del(id,kind){
+  await fetch("/api/admin/delete",{method:"POST",headers:{"Content-Type":"application/json","X-Admin-Token":token},
+    body:JSON.stringify({id,kind})}); loadQueue();
+}
+$("loginBtn").onclick=login;
+$("pw").addEventListener("keydown",e=>{ if(e.key==="Enter") login(); });
+$("refresh").onclick=loadQueue;
+$("logout").onclick=logout;
+if(token) showPanel();
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minesweeper</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  #grid { display:grid; gap:3px; background:#0c1226; padding:6px; border-radius:12px; border:1px solid var(--border); }
+  .cell { width:30px; height:30px; border-radius:6px; background:#26365c; border:none; color:#e6ecff;
+          font-weight:800; font-size:15px; cursor:pointer; display:grid; place-items:center; }
+  .cell.open { background:#131a2b; cursor:default; }
+  .cell.mine { background:#f87171; color:#2a0000; }
+  .cell.flag { background:#fbbf24; color:#2a1a00; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/games/common/leaderboard.js"></script>
+<script>
+const GAME="minesweeper";
+document.getElementById("app").innerHTML = gameHeader("Minesweeper") + `
+  <div class="grid cols-2">
+    <div class="card game-shell">
+      <div class="game-hud">Mines: <b id="mines">10</b> &nbsp; Time: <b id="time">0</b>s</div>
+      <div id="grid"></div>
+      <div class="muted">Left-click reveal &middot; right-click (or long-press) to flag. Score = 1000 &minus; seconds.</div>
+      <button class="btn" id="start">New Game</button>
+    </div>
+    <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
+  </div>`;
+
+const N=9, MINES=10;
+const gridEl=document.getElementById("grid");
+gridEl.style.gridTemplateColumns=`repeat(${N},30px)`;
+let cells, mineSet, flags, opened, t0, timer, over;
+const COLORS=["","#22d3ee","#34d399","#fbbf24","#f87171","#c084fc","#f472b6","#e6ecff","#8b96b8"];
+
+function reset(){
+  gridEl.innerHTML=""; cells=[]; mineSet=new Set(); flags=new Set(); opened=0; over=false;
+  while(mineSet.size<MINES) mineSet.add(Math.random()*N*N|0);
+  document.getElementById("mines").textContent=MINES;
+  for(let i=0;i<N*N;i++){
+    const b=document.createElement("button"); b.className="cell"; b.dataset.i=i;
+    b.oncontextmenu=e=>{ e.preventDefault(); flag(i); };
+    b.onclick=()=>reveal(i);
+    let lp; b.ontouchstart=()=>{ lp=setTimeout(()=>{flag(i);lp=null;},400); };
+    b.ontouchend=()=>{ if(lp){ clearTimeout(lp); } };
+    gridEl.appendChild(b); cells.push(b);
+  }
+  clearInterval(timer); document.getElementById("time").textContent=0;
+  t0=null;
+}
+function neighbors(i){ const r=i/N|0,c=i%N,out=[];
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc)continue;
+    const nr=r+dr,nc=c+dc; if(nr>=0&&nr<N&&nc>=0&&nc<N) out.push(nr*N+nc); } return out; }
+function count(i){ return neighbors(i).filter(j=>mineSet.has(j)).length; }
+function startTimer(){ if(t0) return; t0=Date.now();
+  timer=setInterval(()=>document.getElementById("time").textContent=((Date.now()-t0)/1000|0),1000); }
+function flag(i){
+  if(over||cells[i].classList.contains("open")) return;
+  if(flags.has(i)){ flags.delete(i); cells[i].classList.remove("flag"); cells[i].textContent=""; }
+  else { flags.add(i); cells[i].classList.add("flag"); cells[i].textContent="\u2691"; }
+  document.getElementById("mines").textContent=MINES-flags.size;
+}
+function reveal(i){
+  if(over||flags.has(i)||cells[i].classList.contains("open")) return;
+  startTimer();
+  if(mineSet.has(i)) return boom();
+  const stack=[i];
+  while(stack.length){
+    const j=stack.pop();
+    if(cells[j].classList.contains("open")) continue;
+    cells[j].classList.add("open"); opened++;
+    const c=count(j);
+    if(c){ cells[j].textContent=c; cells[j].style.color=COLORS[c]; }
+    else neighbors(j).forEach(k=>{ if(!mineSet.has(k)) stack.push(k); });
+  }
+  if(opened===N*N-MINES) win();
+}
+async function win(){
+  over=true; clearInterval(timer);
+  const secs=(Date.now()-t0)/1000|0; const score=Math.max(1,1000-secs);
+  await LB.recordAndRefresh(GAME, score, document.getElementById("lb"));
+}
+function boom(){
+  over=true; clearInterval(timer);
+  mineSet.forEach(j=>{ cells[j].classList.add("mine"); cells[j].textContent="\u2739"; });
+}
+document.getElementById("start").onclick=reset;
+LB.get(GAME).then(l=>LB.render(document.getElementById("lb"), l));
+reset();
+</script>
+</body>
+</html>

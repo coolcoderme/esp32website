@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visitor Map</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css">
+<style>
+  #map {
+    height: 520px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: #000;
+    overflow: hidden;
+  }
+  .map-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .map-title {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-size: 14px;
+    color: #c5cfe8;
+    margin: 0;
+  }
+  .map-title span { color: var(--accent2); }
+  .jvm-tooltip {
+    background: #0f1730 !important;
+    border: 1px solid #2a3557 !important;
+    border-radius: 10px !important;
+    color: #e6ecff !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+    font-size: 12px !important;
+    padding: 8px 10px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45) !important;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site"><div class="brand"><div class="logo">E32</div>
+    <div><h1>Visitor Map</h1><p><a class="back" href="/">&larr; Back home</a></p></div></div></header>
+
+  <div class="card">
+    <div class="map-head">
+      <h2 class="map-title">Visited from <span id="countryCount">0</span> countries</h2>
+      <div class="row">
+        <span class="pill" id="visitTotal">0 visitors</span>
+        <span class="pill good" id="youPill">Detecting...</span>
+      </div>
+    </div>
+    <div id="map"></div>
+    <p class="muted" id="status" style="margin-top:10px">
+      Your country is detected from your public IP (ip-api.com, falling back to ipwho.is). Hover a country to see its visitor count.
+    </p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const SESSION_KEY = "esp_map_counted_v1";
+let countries = {};
+let map = null;
+
+function esc(s) {
+  return (s + "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+
+function valuesForMap(data) {
+  // jsVectorMap world map uses uppercase ISO codes.
+  const values = {};
+  Object.keys(data || {}).forEach(code => {
+    values[code.toUpperCase()] = Math.max(1, Number(data[code].count) || 0);
+  });
+  return values;
+}
+
+function renderMap(data) {
+  countries = data || {};
+  const values = valuesForMap(countries);
+  const el = $("map");
+  el.innerHTML = "";
+
+  map = new jsVectorMap({
+    selector: "#map",
+    map: "world",
+    backgroundColor: "#000000",
+    draggable: true,
+    zoomButtons: true,
+    zoomOnScroll: true,
+    regionStyle: {
+      initial: {
+        fill: "#182036",
+        stroke: "#0b0f1a",
+        strokeWidth: 0.4,
+        fillOpacity: 1
+      },
+      hover: {
+        fillOpacity: 1,
+        fill: "#5b8cff"
+      }
+    },
+    series: {
+      regions: [{
+        attribute: "fill",
+        scale: ["#1f294a", "#3d6fd9", "#5b8cff"],
+        values: values
+      }]
+    },
+    onRegionTooltipShow(event, tooltip, code) {
+      const entry = countries[code] || countries[code.toUpperCase()] || countries[code.toLowerCase()];
+      const name = entry ? entry.name : code;
+      const count = entry ? entry.count : 0;
+      tooltip.text(
+        name + "\n" + count + " visitor" + (count === 1 ? "" : "s"),
+        true
+      );
+    }
+  });
+}
+
+async function loadStats() {
+  const data = await (await fetch("/api/map")).json();
+  const list = data.countries || {};
+  $("countryCount").textContent = data.country_count || Object.keys(list).length;
+  $("visitTotal").textContent = (data.total || 0) + " visitors";
+  renderMap(list);
+  return data;
+}
+
+// Priority: ip-api.com, then ipwho.is when rate-limited / failed.
+async function lookupCountry() {
+  // 1) ip-api.com (free, no key; omit IP so it uses this browser's public IP)
+  try {
+    const r = await fetch("http://ip-api.com/json/?fields=status,message,country,countryCode");
+    const d = await r.json();
+    if (d && d.status === "success" && d.countryCode) {
+      return { code: d.countryCode.toUpperCase(), name: d.country, source: "ip-api.com" };
+    }
+    // status fail often means private IP or rate limit
+    console.warn("ip-api.com:", d && d.message);
+  } catch (e) {
+    console.warn("ip-api.com failed", e);
+  }
+
+  // 2) ipwho.is fallback
+  try {
+    const r = await fetch("https://ipwho.is/");
+    const d = await r.json();
+    if (d && d.success !== false && d.country_code) {
+      return { code: String(d.country_code).toUpperCase(), name: d.country, source: "ipwho.is" };
+    }
+  } catch (e) {
+    console.warn("ipwho.is failed", e);
+  }
+
+  return null;
+}
+
+async function recordVisit() {
+  $("status").textContent = "Detecting your country from your public IP...";
+  const geo = await lookupCountry();
+  if (!geo) {
+    $("youPill").textContent = "Unknown";
+    $("youPill").className = "pill warn";
+    $("status").textContent =
+      "Could not detect your country (need internet on this device, or both geo APIs failed).";
+    return;
+  }
+
+  $("youPill").textContent = "You: " + geo.name;
+  $("youPill").className = "pill good";
+
+  // Count at most once per browser session to protect rate limits / avoid spam.
+  if (sessionStorage.getItem(SESSION_KEY)) {
+    $("status").textContent =
+      "Showing live counts. Already counted this session from " + geo.name +
+      " via " + geo.source + ".";
+    return;
+  }
+
+  try {
+    const res = await (await fetch("/api/map", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: geo.code, name: geo.name })
+    })).json();
+    if (res.ok) {
+      sessionStorage.setItem(SESSION_KEY, geo.code);
+      $("countryCount").textContent = res.country_count;
+      $("visitTotal").textContent = res.total + " visitors";
+      renderMap(res.countries || {});
+      $("status").textContent =
+        "Counted a visit from " + esc(geo.name) + " via " + geo.source +
+        ". Hover any country for its total.";
+    } else {
+      $("status").textContent = "Could not save visit: " + (res.error || "error");
+    }
+  } catch (e) {
+    $("status").textContent = "Could not reach the board to save your visit.";
+  }
+}
+
+(async function boot() {
+  try {
+    await loadStats();
+  } catch (e) {
+    $("status").textContent = "Could not load visitor stats from the board.";
+  }
+  await recordVisit();
+})();
+</script>
+</body>
+</html>

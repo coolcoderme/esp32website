@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit Converter</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site"><div class="brand"><div class="logo">E32</div>
+    <div><h1>Unit Converter</h1><p><a class="back" href="/#tools">&larr; Back to tools</a></p></div></div></header>
+  <div class="card" style="max-width:520px;margin:0 auto">
+    <label>Category</label>
+    <select id="cat"></select>
+    <div class="row" style="margin-top:12px">
+      <div style="flex:1"><label>From</label><input type="number" id="inVal" value="1"><select id="from"></select></div>
+      <div style="flex:1"><label>To</label><input type="number" id="outVal" readonly><select id="to"></select></div>
+    </div>
+    <div class="gap"></div>
+    <div class="stat-value center mono" id="result">--</div>
+  </div>
+</div>
+<script>
+// factors relative to a base unit per category
+const CATS={
+  Length:{base:"m",units:{m:1,km:1000,cm:0.01,mm:0.001,mi:1609.344,yd:0.9144,ft:0.3048,in:0.0254}},
+  Mass:{base:"kg",units:{kg:1,g:0.001,mg:1e-6,lb:0.45359237,oz:0.0283495231,t:1000}},
+  Volume:{base:"L",units:{L:1,mL:0.001,gal:3.78541,qt:0.946353,cup:0.24,"fl oz":0.0295735}},
+  Time:{base:"s",units:{s:1,min:60,hr:3600,day:86400,ms:0.001}},
+  Speed:{base:"m/s",units:{"m/s":1,"km/h":0.277778,mph:0.44704,knot:0.514444}},
+  Data:{base:"B",units:{B:1,KB:1024,MB:1048576,GB:1073741824,bit:0.125}},
+  Temperature:{special:true}
+};
+const $=id=>document.getElementById(id);
+function fillCats(){ $("cat").innerHTML=Object.keys(CATS).map(c=>`<option>${c}</option>`).join(""); }
+function fillUnits(){
+  const c=$("cat").value;
+  if(CATS[c].special){ const t=["C","F","K"];
+    $("from").innerHTML=$("to").innerHTML=t.map(u=>`<option>${u}</option>`).join(""); $("to").selectedIndex=1; }
+  else { const u=Object.keys(CATS[c].units);
+    $("from").innerHTML=$("to").innerHTML=u.map(x=>`<option>${x}</option>`).join(""); $("to").selectedIndex=1; }
+  convert();
+}
+function toBaseTemp(v,u){ return u==="C"?v : u==="F"?(v-32)*5/9 : v-273.15; }
+function fromBaseTemp(c,u){ return u==="C"?c : u==="F"?c*9/5+32 : c+273.15; }
+function convert(){
+  const c=$("cat").value, v=parseFloat($("inVal").value)||0;
+  let out;
+  if(CATS[c].special){ out=fromBaseTemp(toBaseTemp(v,$("from").value),$("to").value); }
+  else { const u=CATS[c].units; out=v*u[$("from").value]/u[$("to").value]; }
+  out=Math.round(out*1e6)/1e6;
+  $("outVal").value=out;
+  $("result").textContent=`${v} ${$("from").value} = ${out} ${$("to").value}`;
+}
+$("cat").onchange=fillUnits;
+["inVal","from","to"].forEach(id=>$(id).addEventListener("input",convert));
+fillCats(); fillUnits();
+</script>
+</body>
+</html>
