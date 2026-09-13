@@ -3,31 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simon</title>
+<title>Color Memory Game</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
-  #pad { display:grid; grid-template-columns:repeat(2,110px); gap:10px; }
-  .btn-s { width:110px; height:110px; border-radius:16px; border:none; cursor:pointer; opacity:.55;
+  #color-memory-game-pad { display:grid; grid-template-columns:repeat(2,110px); gap:10px; }
+  .color-memory-game-btn { width:110px; height:110px; border-radius:16px; border:none; cursor:pointer; opacity:.55;
            transition:opacity .1s; }
-  .btn-s.lit { opacity:1; }
-  #g { background:#34d399; } #r { background:#f87171; }
-  #y { background:#fbbf24; } #b { background:#5b8cff; }
+  .color-memory-game-btn.lit { opacity:1; }
+  #color-memory-game-g { background:#34d399; } #color-memory-game-r { background:#f87171; }
+  #color-memory-game-y { background:#fbbf24; } #color-memory-game-b { background:#5b8cff; }
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <script src="/games/common/leaderboard.js"></script>
 <script>
-const GAME="simon";
-document.getElementById("app").innerHTML = gameHeader("Simon") + `
+const GAME="color-memory-game";
+document.getElementById("app").innerHTML = gameHeader("Color Memory Game") + `
   <div class="grid cols-2">
     <div class="card game-shell">
       <div class="game-hud">Level: <b id="level">0</b> &nbsp; <span id="msg">Press Start</span></div>
-      <div id="pad">
-        <button class="btn-s" id="g" data-k="0"></button>
-        <button class="btn-s" id="r" data-k="1"></button>
-        <button class="btn-s" id="y" data-k="2"></button>
-        <button class="btn-s" id="b" data-k="3"></button>
+      <div id="color-memory-game-pad">
+        <button class="color-memory-game-btn" id="color-memory-game-g" data-k="0"></button>
+        <button class="color-memory-game-btn" id="color-memory-game-r" data-k="1"></button>
+        <button class="color-memory-game-btn" id="color-memory-game-y" data-k="2"></button>
+        <button class="color-memory-game-btn" id="color-memory-game-b" data-k="3"></button>
       </div>
       <div class="muted">Repeat the growing sequence. Score = level reached.</div>
       <button class="btn" id="start">Start</button>
@@ -35,7 +35,7 @@ document.getElementById("app").innerHTML = gameHeader("Simon") + `
     <div class="card"><h3>Leaderboard</h3><div id="lb"></div></div>
   </div>`;
 
-const ids=["g","r","y","b"];
+const ids=["color-memory-game-g","color-memory-game-r","color-memory-game-y","color-memory-game-b"];
 const freq=[329,262,220,392];
 let seq, step, playing, actx;
 function tone(k){
