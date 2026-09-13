@@ -10,7 +10,7 @@ A full-featured website hosted directly on an **Adafruit Metro ESP32-S3 (N16R8)*
 - **DHT11 sensor** - live indoor temperature (C/F) and humidity.
 - **Outdoor weather** - forecast from the National Weather Service (`api.weather.gov`).
 - **Air quality** - US AQI + pollutants from Open-Meteo (free, no API key).
-- **10 arcade games** with shared 3-letter-initials leaderboards: Snake, Tetris, Breakout, 2048, Pong, Minesweeper, Memory Match, Tic-Tac-Toe (vs AI), Space Invaders, Color Memory Game.
+- **10 arcade games** with shared 3-letter-initials leaderboards: Snake, Tetris, Breakout, 2048, Pong, Minesweeper, Memory Match, Tic-Tac-Toe (vs AI), Space Invaders, Simon.
 - **4 offline tools**: Scientific Calculator, GPA Calculator, Pomodoro Study Timer, Unit Converter.
 - **Open chat** with automatic profanity flagging.
 - **Notes to the microcontroller** - private notes only the owner can read.
