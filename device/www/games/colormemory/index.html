@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simon</title>
+<title>Color Memory Game</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
   #pad { display:grid; grid-template-columns:repeat(2,110px); gap:10px; }
@@ -18,8 +18,8 @@
 <div class="wrap" id="app"></div>
 <script src="/games/common/leaderboard.js"></script>
 <script>
-const GAME="simon";
-document.getElementById("app").innerHTML = gameHeader("Simon") + `
+const GAME="colormemory";
+document.getElementById("app").innerHTML = gameHeader("Color Memory Game") + `
   <div class="grid cols-2">
     <div class="card game-shell">
       <div class="game-hud">Level: <b id="level">0</b> &nbsp; <span id="msg">Press Start</span></div>
